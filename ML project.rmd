@@ -1,0 +1,54 @@
+---
+title: "ML"
+author: "Shengfang Sun"
+date: "Tuesday, February 17, 2015"
+output: html_document
+---
+
+1.Raw data clean up: remove NA variables
+
+```{r}
+pml<-read.csv(file="pml-training.csv", na.strings=c("","NA"))
+Narate<-sapply(pml, function(x) mean(is.na(x)))
+NaIndex<-which(Narate<=0.95)
+pml<-pml[,NaIndex]
+```
+
+2.spliting training and tuning subsets
+
+```{r}
+library(caret)
+set.seed(34)
+inTrain<-createDataPartition(pml$classe, p=0.7, list=F)
+training<-pml[inTrain,]
+tuning<-pml[-inTrain,]
+```
+
+3. Building model
+
+```{r}
+training1<-training[, 5:60]
+library(randomForest)
+rfFit<-randomForest(classe~., data=training1, nTree=500)
+rfFit
+```
+As shown above, the fit give an **out of sample error rate** (or out of bage error rate OOB) at 0.23%.
+
+
+4. Predict and accuracy
+```{r}
+pred<-predict(rfFit, newdata=tuning)
+confusionMatrix(tuning$classe, pred)
+```
+To do the **cross-valadation**, predicted values by fitting the model rfFit to the tuning dataset were compared with the true values. This analysis gives the accuracy of 99.76% (error rate ~ 0.23, nearly the same as the OOB).
+
+5. Practically apply the model to real problem
+
+The validated model were used to do the problem sets given. 
+```{r}
+testing<-read.csv(file="pml-testing.csv", na.strings=c("","NA"))
+levels(testing$cvtd_timestamp)<-levels(training1$cvtd_timestamp) 
+levels(testing$new_window)<-levels(training1$new_window) 
+predict(rfFit, newdata=testing)
+```
+
